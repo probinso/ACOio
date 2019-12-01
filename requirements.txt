@@ -1,0 +1,13 @@
+numpy
+scipy
+jupyter
+matplotlib
+Pillow
+scikit-learn
+# tensorflow-gpu	# GPU version of TensorFlow.
+pandas
+pyemd
+memoized_property
+tqdm
+python_speech_features
+librosa
