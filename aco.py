@@ -6,9 +6,11 @@ from operator import attrgetter
 from functools import reduce
 
 import numpy as np
-import scipy.signal as signal
 
-from .sound import Sound
+from memoized_property import memoized_property
+
+
+from sound import Sound
 
 
 class _ACOLoader:
@@ -177,107 +179,6 @@ class ACO(Sound):
         self.basedir = basedir
         self.raw = raw
 
-    @property
-    def end_datetime(self):
-        return self.date_offset(self._durration)
-
-    def date_offset(self, durration):
-        return self._time_stamp + durration
-
-    def resample_fs(self, fs):
-        return ACO(
-            self._time_stamp,
-            fs,
-            self._resample_fs(fs),
-            self.raw,
-            basedir=self.basedir
-        )
-
-    def resample(self, n):
-        if len(self) == n:
-            return self.copy()
-
-        fs_ratio = n/len(self._data)
-        warnings.warn(
-            f'Only {fs_ratio:.3f} of signal represented',
-            UserWarning
-        )
-        data = signal.resample(self._data, n)
-        return ACO(
-            self._time_stamp,
-            int(np.round(self._fs * fs_ratio)),
-            data,
-            self.raw,
-            basedir=self.basedir
-        )
-
-    def subtract(
-        self, other, frame_duration=.08, frame_shift=.02, wtype='boxcar'
-    ):
-        data = self._subtract_data(other, frame_duration, frame_shift, wtype)
-        return ACO(
-            self._time_stamp,
-            self._fs,
-            data,
-            basedir=self.basedir
-        )
-
-    def EMD(self, levels=1):
-        assert(levels != 0)
-        IMFs = self._emd
-        return ACO(
-            self._time_stamp,
-            self._fs,
-            self._data - np.sum(IMFs[levels:], axis=0),
-            basedir=self.basedir
-        )
-
-    def highpass(self, BUTTER_ORDER=6, cut_off=30.0):
-        data = self._highpass(
-            self._data,
-            BUTTER_ORDER=BUTTER_ORDER,
-            sampling_rate=self._fs,
-            cut_off=cut_off)
-        return ACO(
-            self._time_stamp,
-            self._fs,
-            data,
-            basedir=self.basedir
-        )
-
-    def lowpass(self, BUTTER_ORDER=6, cut_off=3000.0):
-        data = self._lowpass(
-            self._data,
-            BUTTER_ORDER=BUTTER_ORDER,
-            sampling_rate=self._fs,
-            cut_off=cut_off)
-        return ACO(
-            self._time_stamp,
-            self._fs,
-            data,
-            basedir=self.basedir
-        )
-
-    def _date_difference(self, d):
-        return self.durration_to_index(d - self._time_stamp)
-
-    def __getitem__(self, slice_):
-        start = slice_.start
-        timestamp = self._time_stamp + (
-            timedelta(0) if start is None else start
-        )
-
-        idx, jdx = self._getitem__indicies(slice_)
-        data = self._data[idx:jdx]
-
-        return ACO(
-            timestamp,
-            self._fs,
-            data,
-            self.raw,
-            basedir=self.basedir
-        )
-
     def copy(self):
         return ACO(
             self._time_stamp,
@@ -287,7 +188,33 @@ class ACO(Sound):
             basedir=self.basedir
         )
 
+    @memoized_property
+    def end_datetime(self):
+        return self.date_offset(self._durration)
+
+    def date_offset(self, durration):
+        return self._time_stamp + durration
+
+    def _date_difference(self, d):
+        return self.durration_to_index(d - self._time_stamp)
+
+    def __getitem__(self, slice_):
+        result = self.copy()
+        start = slice_.start
+        timestamp = self._time_stamp + (
+            timedelta(0) if start is None else start
+        )
+
+        idx, jdx = self._getitem__indicies(slice_)
+        data = self._data[idx:jdx]
+        result._data = data
+        result.timestamp = timestamp
+        return result
+
     def __matmul__(self, other):
+        '''
+        allows date-time respecting joins of tracks
+        '''
         assert(self.raw)
         assert(other.raw)
 
@@ -319,11 +246,11 @@ class ACO(Sound):
         if overlap_count > 0:
             warnings.warn(f'Overlaps {overlap_count} samples', UserWarning)
 
-        aco = ACO(
+        result = self.__class__(
             ordered[0]._time_stamp,
             ordered[0]._fs,
             data,
             ordered[0].raw,
             basedir=self.basedir
         )
-        return aco
+        return result
