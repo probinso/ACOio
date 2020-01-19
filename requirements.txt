@@ -1,13 +1,11 @@
-numpy
-scipy
-jupyter
-matplotlib
-Pillow
-scikit-learn
-# tensorflow-gpu	# GPU version of TensorFlow.
-pandas
-pyemd
-memoized_property
-tqdm
-python_speech_features
-librosa
+scipy==1.4.1
+jupyter==1.0.0
+jupyter-client==5.3.4
+jupyter-console==6.0.0
+jupyter-core==4.6.1
+# scikit-learn==0.22.1
+pyemd==0.5.1
+# librosa==0.7.2
+numpy==1.18.1
+matplotlib==3.1.2
+Pillow==7.0.0
