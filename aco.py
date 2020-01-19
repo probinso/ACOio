@@ -149,7 +149,7 @@ class _DatetimeACOLoader(_ACOLoader):
             while result[-1].end_datetime < result[-1].date_offset(local_end):
                 _ = cls.load_ACO_from_datetime(
                     basedir,
-                    result[-1].end_datetime + timedelta(minutes=1),
+                    result[-1].end_datetime,
                     full=True)
                 local_end = local_end - _._durration
                 result.append(_)
@@ -175,13 +175,13 @@ class ACOio:
 class ACO(Sound):
     def __init__(self, time_stamp, fs, data, raw=False, *, basedir):
         super().__init__(fs, data)
-        self._time_stamp = time_stamp
+        self.start_datetime = time_stamp
         self.basedir = basedir
         self.raw = raw
 
     def copy(self):
         return ACO(
-            self._time_stamp,
+            self.start_datetime,
             self._fs,
             self._data.copy(),
             self.raw,
@@ -193,15 +193,15 @@ class ACO(Sound):
         return self.date_offset(self._durration)
 
     def date_offset(self, durration):
-        return self._time_stamp + durration
+        return self.start_datetime + durration
 
     def _date_difference(self, d):
-        return self.durration_to_index(d - self._time_stamp)
+        return self.durration_to_index(d - self.start_datetime)
 
     def __getitem__(self, slice_):
         result = self.copy()
         start = slice_.start
-        timestamp = self._time_stamp + (
+        timestamp = self.start_datetime + (
             timedelta(0) if start is None else start
         )
 
@@ -225,17 +225,19 @@ class ACO(Sound):
             ordered = sorted((self, other), key=attrgetter('_fs'))
             ordered[-1] = ordered[-1].resample_fs(ordered[0]._fs)
 
-        ordered = sorted(ordered, key=attrgetter('_time_stamp'))
-        durration = ordered[-1].end_datetime - ordered[0]._time_stamp
+        ordered = sorted(ordered, key=attrgetter('start_datetime'))
+        durration = ordered[-1].end_datetime - ordered[0].start_datetime
 
-        space = ordered[0].durration_to_index(durration)
+        space = max(
+            ordered[0].durration_to_index(durration),
+            len(A._data), len(B._data))
 
         data = np.full(space, np.NAN)
 
         idx = ~np.isnan(ordered[0]._data)
         data[:len(ordered[0]._data)][idx] = ordered[0]._data[idx]
 
-        durration = ordered[-1]._time_stamp - ordered[0]._time_stamp
+        durration = ordered[-1].start_datetime - ordered[0].start_datetime
         start = ordered[0].durration_to_index(durration)
 
         idx = ~np.isnan(ordered[-1]._data)
@@ -247,7 +249,7 @@ class ACO(Sound):
             warnings.warn(f'Overlaps {overlap_count} samples', UserWarning)
 
         result = self.__class__(
-            ordered[0]._time_stamp,
+            ordered[0].start_datetime,
             ordered[0]._fs,
             data,
             ordered[0].raw,
