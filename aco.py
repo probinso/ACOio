@@ -49,11 +49,11 @@ class _ACOLoader:
 
     @classmethod
     def _ACO_to_int(cls, databytes, nbits):
-        """
+        '''
         Convert the block of bytes to an array of int32.
 
         We need to use int32 because there can be 17 bits.
-        """
+        '''
         nbits = int(nbits)
         # Fast path for special case of 16 bits:
         if nbits == 16:
