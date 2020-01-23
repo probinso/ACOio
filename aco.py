@@ -129,32 +129,44 @@ class _DatetimeACOLoader(_ACOLoader):
         return osp.join(dirname, basename)
 
     @classmethod
-    def load_ACO_from_datetime(
+    def _load_full_ACO_from_base_datetime(
+        cls,
+        basedir, floor_datetime
+    ):
+        aco = cls.load_ACO_from_file(
+            basedir, cls._path_from_date(floor_datetime)
+        )
+        return aco
+
+    @classmethod
+    def load_span_ACO_from_datetime(
         cls,
         basedir, index_datetime,
         full=False, durration=timedelta(minutes=6)
     ):
+        result = []
         floor_datetime = cls.__floor_dt(index_datetime)
-        aco = cls.load_ACO_from_file(
-            basedir, cls._path_from_date(floor_datetime)
-        )
-        if full:
-            return aco
-
         start = index_datetime - floor_datetime
         end = start + durration
-        if end is not None:
-            result = [aco]
-            local_end = end
-            while result[-1].end_datetime < result[-1].date_offset(local_end):
-                _ = cls.load_ACO_from_datetime(
+        local_end = end
+        while \
+            (not result) or \
+            (result[-1].end_datetime < result[-1].date_offset(local_end))
+        :
+            try:
+                _ = cls._load_full_ACO_from_base_datetime(
                     basedir,
-                    result[-1].end_datetime,
-                    full=True)
-                local_end = local_end - _._durration
-                result.append(_)
-            aco = reduce(ACO.__matmul__, result)
-
+                    floor_datetime
+                )
+            except FileNotFoundError as e:
+                warnings.warn(
+                    'index-range not continuous in local storage',
+                    UserWarning
+                )
+                break
+            local_end = local_end - _._durration
+            result.append(_)
+        aco = reduce(ACO.__matmul__, result)
         return aco[start:end]
 
 
@@ -173,10 +185,10 @@ class ACOio:
 
 
 class ACO(Sound):
-    def __init__(self, time_stamp, fs, data, raw=False, *, basedir):
+    def __init__(self, time_stamp, fs, data, raw=False, *, io):
         super().__init__(fs, data)
         self.start_datetime = time_stamp
-        self.basedir = basedir
+        self.io = io
         self.raw = raw
 
     def copy(self):
@@ -185,7 +197,7 @@ class ACO(Sound):
             self._fs,
             self._data.copy(),
             self.raw,
-            basedir=self.basedir
+            io=self.io
         )
 
     @memoized_property
@@ -198,18 +210,56 @@ class ACO(Sound):
     def _date_difference(self, d):
         return self.durration_to_index(d - self.start_datetime)
 
-    def __getitem__(self, slice_):
-        result = self.copy()
-        start = slice_.start
-        timestamp = self.start_datetime + (
-            timedelta(0) if start is None else start
-        )
+    def __oolb(self, slice_):
+        return (self._start < 0)
 
-        idx, jdx = self._getitem__indicies(slice_)
-        data = self._data[idx:jdx]
-        result._data = data
-        result.timestamp = timestamp
-        return result
+    def __ooub(self, slice_):
+        return (self.date_offset(slice_.end) > self.end_datetime)
+
+    def _oob(self, slice_):
+        return self.__oolb(slice_) or self.__oolb(slice_)
+
+    def _reversed_indexing(slice_):
+        return (slice_.end < slice_.start)
+
+    def __getitem__(self, slice_):
+        if slice_.start is None:
+            slice._start = timedelta(seconds=0)
+        if slice_.end is None:
+            slice._end = self._durration
+
+        if self._reversed_indexing(slice_):
+            raise "Does not support reverse indexing"
+
+        if self._oob(slice_):
+            if self.raw:
+                result = self.io.load(
+                    self.start_datetime + slice_.start, slice_.end
+                )
+                result.append(self.copy())
+                aco = reduce(ACO.__matmul__, result)
+                return aco[slice_.start:slice_.end]
+            else:
+                warnings.warn(
+                    'index-range not transferable',
+                    UserWarning
+                )
+
+                idx = max(timedelta(0), slice_.start)
+                jdx = min(self._durration, slice_.end)
+                return self[idx:jdx]
+        else:
+            result = self.copy()
+            start = slice_.start
+            timestamp = self.start_datetime + (
+                timedelta(0) if start is None else start
+            )
+
+            idx, jdx = self._getitem__indicies(slice_)
+            data = self._data[idx:jdx]
+            result._data = data
+            result.timestamp = timestamp
+            return result
 
     def __matmul__(self, other):
         '''
@@ -253,6 +303,6 @@ class ACO(Sound):
             ordered[0]._fs,
             data,
             ordered[0].raw,
-            basedir=self.basedir
+            io=self.io
         )
         return result
