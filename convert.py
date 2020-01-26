@@ -1,5 +1,7 @@
 from aco import ACOio, datetime, timedelta, _DatetimeACOLoader
 import pydub
+import os.path as osp
+import os
 
 if __name__ == '__main__':
     loader = ACOio('./')
@@ -16,12 +18,15 @@ if __name__ == '__main__':
     # end_date = datetime(
     #     month=3, year=2016, day=1
     # )
+    dstdir = './dst'
 
     target = start_date
     while target < end_date:
         srcpath = _DatetimeACOLoader.path_from_date(target)
         fname, _extenasion = srcpath.rsplit('.', 1)
-        dstpath = '.'.join([fname, extension])
+        dstpath = osp.join(dstdir, '.'.join([fname, extension]))
+        os.makedirs(osp.dirname(dstpath), exist_ok=True)
+
         src = loader.load(target, durration)
         wav = src.get_wav(resample=False)
 
