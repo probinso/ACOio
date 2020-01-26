@@ -37,15 +37,22 @@ class Sound:
     def copy(self):
         return Sound(self._fs, self._data.copy())
 
-    def _resample_fs(self, data, fs):
-        fs_ratio = fs/self._fs
-        data = signal.resample(self._data, int(np.round(len(self)*fs_ratio)))
-        return data
+    @classmethod
+    def _resample_fs(cls, data, new_fs, old_fs):
+        fs_ratio = new_fs/old_fs
+        new_length = int(np.round(len(data) * fs_ratio))
+        return signal.resample(data, new_length)
+
+    def squash_nan(self):
+        result = self.copy()
+        idx = ~np.isnan(result._data)
+        result._data = result._data[idx]
+        return result
 
     def resample_fs(self, fs):
         ''' returns a track resampled to a specific frames per second '''
         result = self.copy()
-        result._data = self._resample_fs(self._data, fs)
+        result._data = self._resample_fs(self._data, fs, self._fs)
         result._fs = fs
         return result
 
@@ -321,8 +328,12 @@ class Sound:
         if data is None:
             data = self._data.copy()
 
+        # cannot resample values with nan
+        idx = np.isnan(data)
+        data[idx] = 0
+
         # bug in IPython.Audio, only handles common fs
-        data = self._resample_fs(self._data, self.BULLSHITWAVNUMBER)
+        data = self._resample_fs(self._data, self.BULLSHITWAVNUMBER, self._fs)
 
         from IPython.display import Audio
         return Audio(data=data, rate=self.BULLSHITWAVNUMBER)

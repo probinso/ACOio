@@ -13,7 +13,8 @@ from memoized_property import memoized_property
 from sound import Sound
 
 
-class _ACOLoader:
+class _FileACOLoader:
+    extension = 'HYD24BBpk'
     header_dtype = np.dtype(
         [('Record', '<u4'),
          ('Decimation', '<u1'),
@@ -44,8 +45,8 @@ class _ACOLoader:
     def load_ACO_from_file(cls, basedir, relpath):
         time_stamp, fs = cls._params_from_filename(relpath)
         filename = osp.join(basedir, relpath)
-        data = cls._from_file(filename)
-        return ACO(time_stamp, fs, data, True, basedir=basedir)
+        data = cls._data_from_file(filename)
+        return ACO(time_stamp, fs, data, True)
 
     @classmethod
     def _ACO_to_int(cls, databytes, nbits):
@@ -71,17 +72,24 @@ class _ACOLoader:
         return num
 
     @classmethod
+    def _frames_per_second(cls, filename):
+        name = osp.basename(filename)
+        _, encs = name.rsplit('.', 1)
+        fs = int(re.findall('\d+', encs).pop()) * 1000
+        return fs
+
+    @classmethod
     def _params_from_filename(cls, filename):
         # 2016-02-15--05.00.HYD24BBpk
         name = osp.basename(filename)
-        dts, encs = name.rsplit('.', 1)
+        dts, _ = name.rsplit('.', 1)
         time_stamp = datetime.strptime(dts, cls.time_code)
 
-        fs = int(re.findall('\d+', encs).pop()) * 1000
+        fs = cls._frames_per_second(filename)
         return time_stamp, fs
 
     @classmethod
-    def _from_file(cls, filename):
+    def _data_from_file(cls, filename):
         headerlist = []
         datalist = []
         with open(filename, 'rb') as fid:
@@ -106,20 +114,19 @@ class _ACOLoader:
         return alldata
 
 
-class _DatetimeACOLoader(_ACOLoader):
-    res = timedelta(minutes=5)
+class _DatetimeACOLoader(_FileACOLoader):
+    expected_file_length = timedelta(minutes=5)
 
     @classmethod
     def __floor_dt(cls, dt):
         src = timedelta(hours=dt.hour, minutes=dt.minute, seconds=dt.second)
-        offset = src.total_seconds() % cls.res.total_seconds()
+        offset = src.total_seconds() % cls.expected_file_length.total_seconds()
         return dt - timedelta(seconds=offset)
 
     @classmethod
     def _filename_from_date(cls, index_datetime):
         dts = datetime.strftime(index_datetime, cls.time_code)
-        encs = 'HYD24BBpk'
-        return '.'.join([dts, encs])
+        return '.'.join([dts, cls.extension])
 
     @classmethod
     def _path_from_date(cls, index_datetime):
@@ -142,53 +149,75 @@ class _DatetimeACOLoader(_ACOLoader):
     def load_span_ACO_from_datetime(
         cls,
         basedir, index_datetime,
-        full=False, durration=timedelta(minutes=6)
+        durration
     ):
         result = []
         floor_datetime = cls.__floor_dt(index_datetime)
         start = index_datetime - floor_datetime
         end = start + durration
         local_end = end
-        while \
-            (not result) or \
-            (result[-1].end_datetime < result[-1].date_offset(local_end))
-        :
+        while local_end.total_seconds() > 0:
             try:
                 _ = cls._load_full_ACO_from_base_datetime(
                     basedir,
                     floor_datetime
                 )
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 warnings.warn(
                     'index-range not continuous in local storage',
                     UserWarning
                 )
                 break
+            floor_datetime = cls.__floor_dt(
+                floor_datetime + start + cls.expected_file_length
+            )
             local_end = local_end - _._durration
             result.append(_)
-        aco = reduce(ACO.__matmul__, result)
+        aco = reduce(ACO.__matmul__, result).squash_nan()
         return aco[start:end]
 
 
-class ACOio:
+class Loader:
     def __init__(self, basedir):
         self.basedir = basedir
 
-    def load(self, target):
+    def _path_loader(self, target):
+        raise NotImplementedError
+
+    def _date_loader(self, target, durration):
+        raise NotImplementedError
+
+    def load(self, target, durration=None):
         if isinstance(target, str):
-            return _ACOLoader.load_ACO_from_file(self.basedir, target)
+            return self._path_loader(target, durration)
         elif isinstance(target, datetime):
-            return _DatetimeACOLoader.\
-                load_ACO_from_datetime(self.basedir, target)
+            if durration is None:
+                durration = timedelta(minutes=5)
+            return self._date_loader(target, durration)
         else:
             raise TypeError
 
 
+class ACOLoader(Loader):
+    def _path_loader(self, target):
+        return _FileACOLoader.load_ACO_from_file(self.basedir, target)
+
+    def _date_loader(self, target, durration):
+        return _DatetimeACOLoader.load_span_ACO_from_datetime(self.basedir, target, durration)
+
+
+class ACOio:
+    def __init__(self, basedir, Loader=ACOLoader):
+        self.loader = Loader(basedir)
+
+    def load(self, target, durration=None):
+        return self.loader.load(target, durration)
+
+
 class ACO(Sound):
-    def __init__(self, time_stamp, fs, data, raw=False, *, io):
+    def __init__(self, time_stamp, fs, data, raw=False):
         super().__init__(fs, data)
         self.start_datetime = time_stamp
-        self.io = io
         self.raw = raw
 
     def copy(self):
@@ -196,8 +225,7 @@ class ACO(Sound):
             self.start_datetime,
             self._fs,
             self._data.copy(),
-            self.raw,
-            io=self.io
+            self.raw
         )
 
     @memoized_property
@@ -211,55 +239,40 @@ class ACO(Sound):
         return self.durration_to_index(d - self.start_datetime)
 
     def __oolb(self, slice_):
-        return (self._start < 0)
+        return (slice_.start < timedelta(0))
 
     def __ooub(self, slice_):
-        return (self.date_offset(slice_.end) > self.end_datetime)
+        return (self.date_offset(slice_.stop) > self.end_datetime)
 
     def _oob(self, slice_):
         return self.__oolb(slice_) or self.__oolb(slice_)
 
-    def _reversed_indexing(slice_):
-        return (slice_.end < slice_.start)
+    @classmethod
+    def _reversed_indexing(cls, slice_):
+        return (slice_.stop < slice_.start)
 
     def __getitem__(self, slice_):
-        if slice_.start is None:
-            slice._start = timedelta(seconds=0)
-        if slice_.end is None:
-            slice._end = self._durration
+        idx = timedelta(seconds=0) if slice_.start is None else slice_.start
+        jdx = self._durration if slice_.stop is None else slice_.stop
+        slice_ = slice(idx, jdx)
 
         if self._reversed_indexing(slice_):
             raise "Does not support reverse indexing"
 
         if self._oob(slice_):
-            if self.raw:
-                result = self.io.load(
-                    self.start_datetime + slice_.start, slice_.end
-                )
-                result.append(self.copy())
-                aco = reduce(ACO.__matmul__, result)
-                return aco[slice_.start:slice_.end]
-            else:
-                warnings.warn(
-                    'index-range not transferable',
-                    UserWarning
-                )
+            warnings.warn(f'Slice Out of Bounds', UserWarning)
 
-                idx = max(timedelta(0), slice_.start)
-                jdx = min(self._durration, slice_.end)
-                return self[idx:jdx]
-        else:
-            result = self.copy()
-            start = slice_.start
-            timestamp = self.start_datetime + (
-                timedelta(0) if start is None else start
-            )
+        result = self.copy()
+        start = slice_.start
+        timestamp = self.start_datetime + (
+            timedelta(0) if start is None else start
+        )
 
-            idx, jdx = self._getitem__indicies(slice_)
-            data = self._data[idx:jdx]
-            result._data = data
-            result.timestamp = timestamp
-            return result
+        idx, jdx = self._getitem__indicies(slice_)
+        data = self._data[idx:jdx]
+        result._data = data
+        result.timestamp = timestamp
+        return result
 
     def __matmul__(self, other):
         '''
@@ -302,7 +315,18 @@ class ACO(Sound):
             ordered[0].start_datetime,
             ordered[0]._fs,
             data,
-            ordered[0].raw,
-            io=self.io
+            ordered[0].raw
         )
         return result
+
+
+if __name__ == '__main__':
+    loader = ACOio('./')
+    target = datetime(
+        day=18, month=2, year=2016,
+        hour=8, minute=15
+    )
+    src = loader.load(target, timedelta(minutes=8))
+    s = slice(timedelta(minutes=4, seconds=59), timedelta(minutes=5, seconds=1))
+    src = loader.load(target, timedelta(minutes=8))[s]
+    _ = src.resample_fs(800)
