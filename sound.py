@@ -390,9 +390,10 @@ class Sound:
     def header(self):
         return 'audio/x-wav'
 
-    def get_wav(self):
+    def get_wav(self, *, resample=True):
         '''Retrieves io.BytesIO() packed with `.wav` contents'''
-        result = self.resample_fs(self.BULLSHITWAVNUMBER)
+        result = self.resample_fs(self.BULLSHITWAVNUMBER) if resample \
+            else self.copy()
         data = result.normdata(dtype=np.int16)
 
         bytes_io = io.BytesIO()

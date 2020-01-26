@@ -136,6 +136,11 @@ class _DatetimeACOLoader(_FileACOLoader):
         return osp.join(dirname, basename)
 
     @classmethod
+    def path_from_date(cls, search_datetime):
+        floor_datetime = cls.__floor_dt(search_datetime)
+        return cls._path_from_date(floor_datetime)
+
+    @classmethod
     def _load_full_ACO_from_base_datetime(
         cls,
         basedir, floor_datetime
@@ -203,7 +208,8 @@ class ACOLoader(Loader):
         return _FileACOLoader.load_ACO_from_file(self.basedir, target)
 
     def _date_loader(self, target, durration):
-        return _DatetimeACOLoader.load_span_ACO_from_datetime(self.basedir, target, durration)
+        return _DatetimeACOLoader.load_span_ACO_from_datetime(
+            self.basedir, target, durration)
 
 
 class ACOio:
@@ -318,15 +324,3 @@ class ACO(Sound):
             ordered[0].raw
         )
         return result
-
-
-if __name__ == '__main__':
-    loader = ACOio('./')
-    target = datetime(
-        day=18, month=2, year=2016,
-        hour=8, minute=15
-    )
-    src = loader.load(target, timedelta(minutes=8))
-    s = slice(timedelta(minutes=4, seconds=59), timedelta(minutes=5, seconds=1))
-    src = loader.load(target, timedelta(minutes=8))[s]
-    _ = src.resample_fs(800)
