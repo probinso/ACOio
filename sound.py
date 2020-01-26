@@ -12,7 +12,6 @@ import scipy
 
 # from python_speech_features import logfbank
 
-from pyemd import emd as EMD
 from memoized_property import memoized_property
 
 
@@ -168,22 +167,6 @@ class Sound:
             sampling_rate=self._fs,
             cut_off=cut_off)
         return result
-
-    def EMD(self, levels=1):
-        '''
-        returns track after application of empirical mode decomposition
-        by recomposing `levels` counted modes. (Implemented from `pyemd`)
-        '''
-        result = self.copy()
-        assert(levels != 0)
-        IMFs = self._emd
-        result._data = self._data - np.sum(IMFs[levels:], axis=0)
-        return result
-
-    @memoized_property
-    def _emd(self):
-        emd = EMD()
-        return emd(self._data)
 
     def stft(self):
         ''' short term fourier transform, as implemented by `signal.stft` '''
