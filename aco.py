@@ -56,8 +56,6 @@ class _FileMp3Loader(_FileLoader):
         return a.frame_rate
 
 
-
-
 class _FileACOLoader(_FileLoader):
     extension = 'HYD24BBpk'
     header_dtype = np.dtype(
