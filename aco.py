@@ -8,12 +8,57 @@ from functools import reduce
 import numpy as np
 
 from memoized_property import memoized_property
-
+import pydub
 
 from sound import Sound
 
 
-class _FileACOLoader:
+class _FileLoader:
+    resolution = np.int32
+    time_code = '%Y-%m-%d--%H.%M'
+
+    @classmethod
+    def load_ACO_from_file(cls, basedir, relpath):
+        time_stamp = cls._date_from_filename(relpath)
+        filename = osp.join(basedir, relpath)
+        fs = cls._frames_per_second(filename)
+        data = cls._data_from_file(filename)
+        return ACO(time_stamp, fs, data, True)
+
+    @classmethod
+    def _data_from_file(cls, filename):
+        raise NotImplementedError
+
+    @classmethod
+    def _date_from_filename(cls, filename):
+        # 2016-02-15--05.00.HYD24BBpk
+        name = osp.basename(filename)
+        dts, _ = name.rsplit('.', 1)
+        time_stamp = datetime.strptime(dts, cls.time_code)
+        return time_stamp
+
+    def _frames_per_second(cls, filename):
+        raise NotImplementedError
+
+
+class _FileMp3Loader(_FileLoader):
+    extension = 'mp3'
+
+    @classmethod
+    def _data_from_file(cls, filename):
+        a = pydub.AudioSegment.from_mp3(filename)
+        y = np.array(a.get_array_of_samples())
+        return y
+
+    @classmethod
+    def _frames_per_second(cls, filename):
+        a = pydub.AudioSegment.from_mp3(filename)
+        return a.frame_rate
+
+
+
+
+class _FileACOLoader(_FileLoader):
     extension = 'HYD24BBpk'
     header_dtype = np.dtype(
         [('Record', '<u4'),
@@ -37,16 +82,6 @@ class _FileACOLoader:
          ('sSec', '<i2'),
          ('dynrange', '<u1'),
          ('bits', '<u1')])
-
-    resolution = np.int32
-    time_code = '%Y-%m-%d--%H.%M'
-
-    @classmethod
-    def load_ACO_from_file(cls, basedir, relpath):
-        time_stamp, fs = cls._params_from_filename(relpath)
-        filename = osp.join(basedir, relpath)
-        data = cls._data_from_file(filename)
-        return ACO(time_stamp, fs, data, True)
 
     @classmethod
     def _ACO_to_int(cls, databytes, nbits):
@@ -72,21 +107,17 @@ class _FileACOLoader:
         return num
 
     @classmethod
-    def _frames_per_second(cls, filename):
-        name = osp.basename(filename)
+    def _frames_per_second(cls, path):
+        name = osp.basename(path)
         _, encs = name.rsplit('.', 1)
         fs = int(re.findall('\d+', encs).pop()) * 1000
         return fs
 
     @classmethod
     def _params_from_filename(cls, filename):
-        # 2016-02-15--05.00.HYD24BBpk
-        name = osp.basename(filename)
-        dts, _ = name.rsplit('.', 1)
-        time_stamp = datetime.strptime(dts, cls.time_code)
-
+        timestamp = cls._date_from_filename(filename)
         fs = cls._frames_per_second(filename)
-        return time_stamp, fs
+        return timestamp, fs
 
     @classmethod
     def _data_from_file(cls, filename):
@@ -114,7 +145,7 @@ class _FileACOLoader:
         return alldata
 
 
-class _DatetimeACOLoader(_FileACOLoader):
+class _DatetimeLoader:
     expected_file_length = timedelta(minutes=5)
 
     @classmethod
@@ -182,6 +213,14 @@ class _DatetimeACOLoader(_FileACOLoader):
         return aco[start:end]
 
 
+class _DatetimeACOLoader(_DatetimeLoader, _FileACOLoader):
+    pass
+
+
+class _DatetimeMp3Loader(_DatetimeLoader, _FileMp3Loader):
+    pass
+
+
 class Loader:
     def __init__(self, basedir):
         self.basedir = basedir
@@ -205,10 +244,19 @@ class Loader:
 
 class ACOLoader(Loader):
     def _path_loader(self, target):
-        return _FileACOLoader.load_ACO_from_file(self.basedir, target)
+        return _DatetimeACOLoader.load_ACO_from_file(self.basedir, target)
 
     def _date_loader(self, target, durration):
         return _DatetimeACOLoader.load_span_ACO_from_datetime(
+            self.basedir, target, durration)
+
+
+class Mp3Loader(Loader):
+    def _path_loader(self, target):
+        return _DatetimeMp3Loader.load_ACO_from_file(self.basedir, target)
+
+    def _date_loader(self, target, durration):
+        return _DatetimeMp3Loader.load_span_ACO_from_datetime(
             self.basedir, target, durration)
 
 
@@ -324,3 +372,11 @@ class ACO(Sound):
             ordered[0].raw
         )
         return result
+
+
+if __name__ == '__main__':
+    loader = ACOio('./dst/', Mp3Loader)
+    target = datetime(
+        day=1, month=2, year=2016
+    )
+    aco = loader.load(target)
