@@ -6,12 +6,23 @@ in memory for ease of analysis.
 
 # Setup a virtual environment
 
+```
+$ virtualenv venv
+$ source venv/bin/activate
+(venv) $ pip install -r requirements
+```
+
 ## create the virtual environment using Anaconda
 
+```
 conda create -n ACO python=3.6
 source activate ACO
 
 pip install --upgrade pip
+```
 
 ## install the dependent libraries
+
+```
 pip install -r requirements.txt
+```
