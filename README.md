@@ -11,7 +11,7 @@ $ virtualenv venv
 $ source venv/bin/activate
 ```
 
-## create the virtual environment using Anaconda
+## create the virtual environment using `Anaconda`
 
 ```
 conda create -n ACO python=3.6
