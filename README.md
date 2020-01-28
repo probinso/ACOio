@@ -4,12 +4,11 @@ the file formats and directory tree for aloha cabled observatory. This
 library supports operating on time-contextual audio files and joining tracks
 in memory for ease of analysis.
 
-# Setup a virtual environment
+## create the virtual environment using `virtualenv`
 
 ```
 $ virtualenv venv
 $ source venv/bin/activate
-(venv) $ pip install -r requirements
 ```
 
 ## create the virtual environment using Anaconda
