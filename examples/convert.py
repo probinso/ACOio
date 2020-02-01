@@ -20,9 +20,9 @@ def func(target):
     extension = 'mp3'
 
     durration = timedelta(minutes=5)
-    dstdir = '/media/research/mp3/long/'
+    dstdir = '/media/research/mp3/long2/'
 
-    srcpath = _DatetimeACOLoader.path_from_date(target)
+    srcpath = _DatetimeACOLoader.path_from_date(target, None)
 
     fname, _extenasion = srcpath.rsplit('.', 1)
     dstpath = osp.join(dstdir, '.'.join([fname, extension]))
@@ -41,10 +41,10 @@ def func(target):
 if __name__ == '__main__':
     step = timedelta(hours=1)
     start_date = datetime(
-        month=12, year=2012, day=1
+        month=1, year=2015, day=1
     )
     end_date = datetime(
-        month=5, year=2013, day=1
+        month=1, year=2016, day=1
     )
 
     li = list(target for target in gentime(start_date, end_date, step))

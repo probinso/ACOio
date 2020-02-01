@@ -173,10 +173,10 @@ class _DatetimeLoader:
     @classmethod
     def _load_full_ACO_from_base_datetime(
         cls,
-        basedir, floor_datetime
+        basedir, floor_datetime, normdir=None
     ):
         aco = cls.load_ACO_from_file(
-            basedir, cls._path_from_date(floor_datetime)
+            basedir, cls._path_from_date(floor_datetime, normdir)
         )
         return aco
 
