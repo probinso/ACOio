@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 
 
@@ -11,8 +11,9 @@ setup(
     name='ACOio',
     version='0.1.0',
     description='IO tools for the Aloha Cabled Observaroty',
-    py_modules=['ACOio'],
-    package_dir={'': 'src'},
+    py_modules=['aco'],
+    packages=find_packages(),
+    python_requires='>=3.6',
     classifiers=[
         # Language suppoer
         "Programming Language :: Python :: 3",

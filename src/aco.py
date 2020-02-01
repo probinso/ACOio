@@ -10,7 +10,7 @@ import numpy as np
 from memoized_property import memoized_property
 import pydub
 
-from sound import Sound
+from .sound import Sound
 
 
 class _FileLoader:
