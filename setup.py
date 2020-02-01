@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 import os
 
 
-def read(fname):
+def read(fname, lines=False):
     with open(os.path.join(os.path.dirname(__file__), fname), 'r') as fd:
-        return fd.read()
+        return fd.readlines() if lines else fd.read()
 
 
 setup(
@@ -12,7 +12,8 @@ setup(
     version='0.1.0',
     description='IO tools for the Aloha Cabled Observaroty',
     py_modules=['aco'],
-    packages=find_packages(),
+    package_dirs={'':'aco'},
+    packages=find_packages('aco'),
     python_requires='>=3.6',
     classifiers=[
         # Language suppoer
@@ -39,7 +40,7 @@ setup(
     ],
 
     # Dependencies
-    install_requires=read('requirements.txt'),
+    install_requires=read('requirements.txt', True),
 
     # Description
     long_description=read('README.md'),
