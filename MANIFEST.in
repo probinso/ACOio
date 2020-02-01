@@ -1,0 +1,4 @@
+include LICENSE
+include *.md
+include *.txt
+recursive-include examples *.txt *.py
