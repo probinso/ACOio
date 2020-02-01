@@ -1,10 +1,17 @@
 # ACOio
+
 This is a library and toolset for audio analysis and visualization fit to
 the file formats and directory tree for aloha cabled observatory. This
 library supports operating on time-contextual audio files and joining tracks
 in memory for ease of analysis.
 
-## create the virtual environment using `virtualenv`
+# Install
+
+```
+pip isntall ACOio
+```
+
+<!-- ## create the virtual environment using `virtualenv`
 
 ```
 $ virtualenv venv
@@ -24,4 +31,4 @@ pip install --upgrade pip
 
 ```
 pip install -r requirements.txt
-```
+``` -->

@@ -158,16 +158,17 @@ class _DatetimeLoader:
         return '.'.join([dts, cls.extension])
 
     @classmethod
-    def _path_from_date(cls, index_datetime):
+    def _path_from_date(cls, index_datetime, normdir):
         info = [index_datetime.year, index_datetime.month, index_datetime.day]
-        dirname = osp.join(*map(lambda i: str(i).zfill(2), info))
+        dirname = osp.join(*map(lambda i: str(i).zfill(2), info)) \
+            if normdir is None else normdir
         basename = cls._filename_from_date(index_datetime)
         return osp.join(dirname, basename)
 
     @classmethod
-    def path_from_date(cls, search_datetime):
+    def path_from_date(cls, search_datetime, normdir=None):
         floor_datetime = cls.__floor_dt(search_datetime)
-        return cls._path_from_date(floor_datetime)
+        return cls._path_from_date(floor_datetime, normdir=normdir)
 
     @classmethod
     def _load_full_ACO_from_base_datetime(
