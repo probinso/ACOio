@@ -7,6 +7,8 @@ in memory for ease of analysis.
 
 # Install
 
+- requires ffmpeg
+
 ```
 $ virtualenv venv
 $ source venv/bin/activate
@@ -19,6 +21,7 @@ or
 $ conda create -n ACO python=3.6
 $ source activate ACO
 $ pip install ACOio
+$ conda install -c conda-forge ffmpeg
 ```
 
 <!-- ## create the virtual environment using `virtualenv`
