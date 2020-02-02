@@ -18,7 +18,7 @@ or
 ```
 $ conda create -n ACO python=3.6
 $ source activate ACO
-$ conda install ACOio
+$ pip install ACOio
 ```
 
 <!-- ## create the virtual environment using `virtualenv`
