@@ -8,14 +8,22 @@ in memory for ease of analysis.
 # Install
 
 ```
-pip isntall ACOio
+$ virtualenv venv
+$ source venv/bin/activate
+(venv) $ pip install ACOio
+```
+
+or 
+
+```
+conda create -n ACO python=3.6
+source activate ACO
+conda install ACOio
 ```
 
 <!-- ## create the virtual environment using `virtualenv`
 
 ```
-$ virtualenv venv
-$ source venv/bin/activate
 ```
 
 ## create the virtual environment using `Anaconda`
