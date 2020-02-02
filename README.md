@@ -16,9 +16,9 @@ $ source venv/bin/activate
 or 
 
 ```
-conda create -n ACO python=3.6
-source activate ACO
-conda install ACOio
+$ conda create -n ACO python=3.6
+$ source activate ACO
+$ conda install ACOio
 ```
 
 <!-- ## create the virtual environment using `virtualenv`
