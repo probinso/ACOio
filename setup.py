@@ -9,11 +9,11 @@ def read(fname, lines=False):
 
 setup(
     name='ACOio',
-    version='0.1.0',
+    version='0.2.2',
     description='IO tools for the Aloha Cabled Observaroty',
+    packages=find_packages('.'),
     py_modules=['aco'],
-    package_dirs={'':'aco'},
-    packages=find_packages('aco'),
+    package_dirs={'aco':'aco'},
     python_requires='>=3.6',
     classifiers=[
         # Language suppoer
@@ -26,14 +26,14 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 4 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Build Tools',
 
         # Pick your license as you wish (should match "license" above)
-        'License :: OSI Approved :: BeerWare MIT License'
+        'License :: OSI Approved :: MIT License',
 
         # Operatin System
         "Operating System :: OS Independent"

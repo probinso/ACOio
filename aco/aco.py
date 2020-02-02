@@ -10,7 +10,7 @@ import numpy as np
 from memoized_property import memoized_property
 import pydub
 
-from .sound import Sound
+from . import sound
 
 
 class _FileLoader:
@@ -208,6 +208,10 @@ class _DatetimeLoader:
             )
             local_end = local_end - _._durration
             result.append(_)
+
+        if not result:
+            raise FileNotFoundError(cls._path_from_date(floor_datetime, None), "Check Your Basedir")
+
         aco = reduce(ACO.__matmul__, result).squash_nan()
         return aco[start:end]
 
@@ -267,7 +271,7 @@ class ACOio:
         return self.loader.load(target, durration)
 
 
-class ACO(Sound):
+class ACO(sound.Sound):
     def __init__(self, time_stamp, fs, data, raw=False):
         super().__init__(fs, data)
         self.start_datetime = time_stamp
