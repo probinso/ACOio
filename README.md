@@ -10,16 +10,8 @@ in memory for ease of analysis.
 - requires ffmpeg
 
 ```
-$ virtualenv venv
-$ source venv/bin/activate
-(venv) $ pip install ACOio
-```
-
-or 
-
-```
 $ conda create -n ACO python=3.6
-$ source activate ACO
+$ conda activate ACO
 $ pip install ACOio
 $ conda install -c conda-forge ffmpeg
 ```
