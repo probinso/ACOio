@@ -12,8 +12,8 @@ in memory for ease of analysis.
 ```
 $ conda create -n ACO python=3.6
 $ conda activate ACO
-$ pip install ACOio
 $ conda install -c conda-forge ffmpeg
+$ pip install ACOio
 ```
 
 <!-- ## create the virtual environment using `virtualenv`
