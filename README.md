@@ -10,8 +10,8 @@ in memory for ease of analysis.
 - requires ffmpeg
 
 ```
-$ conda create -n ACO python=3.6
-$ conda activate ACO
+$ conda create -n ACO-p36 python=3.6
+$ conda activate ACO-p36
 $ conda install -c conda-forge ffmpeg
 $ pip install ACOio
 ```
@@ -24,8 +24,8 @@ $ pip install ACOio
 ## create the virtual environment using `Anaconda`
 
 ```
-conda create -n ACO python=3.6
-source activate ACO
+conda create -n ACO-p36 python=3.6
+source activate ACO-p36
 
 pip install --upgrade pip
 ```
