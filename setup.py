@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 import os
 
 
@@ -9,18 +9,18 @@ def read(fname, lines=False):
 
 setup(
     name='ACOio',
-    version='0.2.2',
+    version='0.3.0',
     description='IO tools for the Aloha Cabled Observaroty',
-    packages=find_packages('.'),
-    py_modules=['aco'],
-    package_dirs={'aco':'aco'},
+    package_dir={'': 'src'},
+    packages=['ACOio'],
     python_requires='>=3.6',
     classifiers=[
-        # Language suppoer
+        # Language support
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
 
         # How mature is this project? Common values are
         #   3 - Alpha
@@ -35,7 +35,7 @@ setup(
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: MIT License',
 
-        # Operatin System
+        # Operating System
         "Operating System :: OS Independent"
     ],
 
