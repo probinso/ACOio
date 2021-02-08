@@ -12,7 +12,7 @@ setup(
     version='0.3.0',
     description='IO tools for the Aloha Cabled Observaroty',
     package_dir={'': 'src'},
-    packages=['ACOio'],
+    packages=['acoio'],
     python_requires='>=3.6',
     classifiers=[
         # Language support

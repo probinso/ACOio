@@ -1,6 +1,6 @@
 import pytest
 
-from ACOio.aco import ACOio, datetime, timedelta, ACOLoader
+from acoio.aco import ACOio, datetime, timedelta, ACOLoader
 
 loader = ACOio('/home/probinso/Whales', ACOLoader)
 # select a date
