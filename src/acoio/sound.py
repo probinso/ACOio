@@ -1,7 +1,7 @@
+from __future__ import print_function
 from collections import namedtuple
 from datetime import datetime, timedelta
 import warnings
-from __future__ import print_function
 
 import io
 

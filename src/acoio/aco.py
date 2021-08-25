@@ -368,7 +368,7 @@ class ACO(sound.Sound):
         dst = data[start:][idx]
         src = ordered[-1]._data[idx]
 
-        assert abs(len(src), len(dst)) <= ACCEPTIBLE_DROP
+        assert abs(len(src) - len(dst)) <= ACCEPTIBLE_DROP
 
         
 
