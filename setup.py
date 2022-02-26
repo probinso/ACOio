@@ -6,7 +6,6 @@ def read(fname, lines=False):
     with open(os.path.join(os.path.dirname(__file__), fname), 'r') as fd:
         return fd.readlines() if lines else fd.read()
 
-
 setup(
     name='ACOio',
     version='0.3.0',

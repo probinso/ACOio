@@ -4,15 +4,15 @@ import re
 import warnings
 from operator import attrgetter
 from functools import reduce
+# import typing
 
 import numpy as np
 
-from memoized_property import memoized_property
-import pydub
+import pydub  # type: ignore
 
-from . import sound
+from acoio.sound import Sound  # type: ignore
 
-ACCEPTIBLE_DROP = 0
+ACCEPTIBLE_DROP = 2
 
 
 class _FileLoader:
@@ -84,12 +84,16 @@ class _FileACOLoader(_FileLoader):
          ('bits', '<u1')])
 
     @classmethod
-    def _ACO_to_int(cls, databytes, nbits):
-        '''
-        Convert the block of bytes to an array of int32.
+    def _ACO_to_int(cls, databytes: np.ndarray, nbits: int = 16) -> np.ndarray:
+        """
+        Convert the block of bytes to an array of int32
 
-        We need to use int32 because there can be 17 bits.
-        '''
+        We need to use int32 because there can be 17 bits, as specified by UH/ACO
+
+        :param databytes: the compressed disk format of an ACO file
+        :param nbits: the requested number of bits to upshift to
+        :return: integer representation of ACO file contents
+        """
         nbits = int(nbits)
         # Fast path for special case of 16 bits:
         if nbits == 16:
@@ -186,12 +190,12 @@ class _DatetimeLoader:
     def load_span_ACO_from_datetime(
         cls,
         basedir, index_datetime,
-        durration
+        duration
     ):
         result = []
         floor_datetime = cls.__floor_dt(index_datetime)
         start = index_datetime - floor_datetime
-        end = start + durration
+        end = start + duration
         local_end = end
         while local_end.total_seconds() > 0:
             try:
@@ -208,7 +212,7 @@ class _DatetimeLoader:
             floor_datetime = cls.__floor_dt(
                 floor_datetime + start + cls.expected_file_length
             )
-            local_end = local_end - _._durration
+            local_end = local_end - _._duration
             result.append(_)
 
         if not result:
@@ -233,16 +237,16 @@ class Loader:
     def _path_loader(self, target):
         raise NotImplementedError
 
-    def _date_loader(self, target, durration):
+    def _date_loader(self, target, duration):
         raise NotImplementedError
 
-    def load(self, target, durration=None):
+    def load(self, target, duration=None):
         if isinstance(target, str):
-            return self._path_loader(target, durration)
+            return self._path_loader(target, duration)
         elif isinstance(target, datetime):
-            if durration is None:
-                durration = timedelta(minutes=5)
-            return self._date_loader(target, durration)
+            if duration is None:
+                duration = timedelta(minutes=5)
+            return self._date_loader(target, duration)
         else:
             raise TypeError
 
@@ -251,29 +255,29 @@ class ACOLoader(Loader):
     def _path_loader(self, target):
         return _DatetimeACOLoader.load_ACO_from_file(self.basedir, target)
 
-    def _date_loader(self, target, durration):
+    def _date_loader(self, target, duration):
         return _DatetimeACOLoader.load_span_ACO_from_datetime(
-            self.basedir, target, durration)
+            self.basedir, target, duration)
 
 
 class Mp3Loader(Loader):
     def _path_loader(self, target):
         return _DatetimeMp3Loader.load_ACO_from_file(self.basedir, target)
 
-    def _date_loader(self, target, durration):
+    def _date_loader(self, target, duration):
         return _DatetimeMp3Loader.load_span_ACO_from_datetime(
-            self.basedir, target, durration)
+            self.basedir, target, duration)
 
 
 class ACOio:
     def __init__(self, basedir, Loader=ACOLoader):
         self.loader = Loader(basedir)
 
-    def load(self, target, durration=None):
-        return self.loader.load(target, durration)
+    def load(self, target, duration=None):
+        return self.loader.load(target, duration)
 
 
-class ACO(sound.Sound):
+class ACO(Sound):
     def __init__(self, time_stamp, fs, data, raw=False):
         super().__init__(fs, data)
         self.start_datetime = time_stamp
@@ -287,15 +291,15 @@ class ACO(sound.Sound):
             self.raw
         )
 
-    @memoized_property
+    @property
     def end_datetime(self):
-        return self.date_offset(self._durration)
+        return self.date_offset(self._duration)
 
-    def date_offset(self, durration):
-        return self.start_datetime + durration
+    def date_offset(self, duration):
+        return self.start_datetime + duration
 
     def _date_difference(self, d):
-        return self.durration_to_index(d - self.start_datetime)
+        return self.duration_to_index(d - self.start_datetime)
 
     def __oolb(self, slice_):
         return (slice_.start < timedelta(0))
@@ -312,7 +316,7 @@ class ACO(sound.Sound):
 
     def __getitem__(self, slice_):
         idx = timedelta(seconds=0) if slice_.start is None else slice_.start
-        jdx = self._durration if slice_.stop is None else slice_.stop
+        jdx = self._duration if slice_.stop is None else slice_.stop
         slice_ = slice(idx, jdx)
 
         if self._reversed_indexing(slice_):
@@ -334,9 +338,12 @@ class ACO(sound.Sound):
         return result
 
     def __matmul__(self, other):
-        '''
+        """
         allows date-time respecting joins of tracks
-        '''
+
+        :param other: next track
+        :return: joined tracks that compensate for time differences
+        """
         assert(self.raw)
         assert(other.raw)
 
@@ -348,10 +355,10 @@ class ACO(sound.Sound):
             ordered[-1] = ordered[-1].resample_fs(ordered[0]._fs)
 
         ordered = sorted(ordered, key=attrgetter('start_datetime'))
-        durration = ordered[-1].end_datetime - ordered[0].start_datetime
+        duration = ordered[-1].end_datetime - ordered[0].start_datetime
 
         space = max(
-            ordered[0].durration_to_index(durration),
+            ordered[0].duration_to_index(duration),
             len(A._data), len(B._data))
 
         data = np.full(space, np.NAN)
@@ -359,21 +366,21 @@ class ACO(sound.Sound):
         idx = ~np.isnan(ordered[0]._data)
         data[:len(ordered[0]._data)][idx] = ordered[0]._data[idx]
 
-        durration = ordered[-1].start_datetime - ordered[0].start_datetime
-        start = ordered[0].durration_to_index(durration)
+        duration = ordered[-1].start_datetime - ordered[0].start_datetime
+        start = ordered[0].duration_to_index(duration)
 
         idx = ~np.isnan(ordered[-1]._data)
-        overlap_count = np.sum(~np.isnan(data[start:][idx]))
+        collision_count = len(data[start:]) - len(idx)
 
-        dst = data[start:][idx]
+        # overlap_count = np.sum(~np.isnan(data[start:][idx]))
+
+        if collision_count != 0:
+            warnings.warn(f'Collisions with [{collision_count}] samples (negative is underlap)', UserWarning)
+
+        # dst = data[start:][idx]
         src = ordered[-1]._data[idx]
 
-        assert abs(len(src) - len(dst)) <= ACCEPTIBLE_DROP
-
-        
-
-        if overlap_count > 0:
-            warnings.warn(f'Overlaps [{overlap_count}] samples', UserWarning)
+        assert abs(collision_count) <= ACCEPTIBLE_DROP
 
         result = self.__class__(
             ordered[0].start_datetime,

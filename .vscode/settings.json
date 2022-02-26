@@ -1,0 +1,12 @@
+{
+    "python.pythonPath": "venv/bin/python3.9",
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.testing.pytestArgs": [
+        "-vv",
+        "./tests",
+        "--rootdir=./"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "editor.rulers": [88]
+}
