@@ -1,13 +1,11 @@
-from datetime import datetime, timedelta
 import os.path as osp
 import re
 import warnings
-from operator import attrgetter
+from datetime import datetime, timedelta
 from functools import reduce
-# import typing
+from operator import attrgetter
 
 import numpy as np
-
 import pydub  # type: ignore
 
 from acoio.sound import Sound  # type: ignore
@@ -17,7 +15,7 @@ ACCEPTIBLE_DROP = 2
 
 class _FileLoader:
     resolution = np.int32
-    time_code = '%Y-%m-%d--%H.%M'
+    time_code = "%Y-%m-%d--%H.%M"
 
     @classmethod
     def load_ACO_from_file(cls, basedir, relpath):
@@ -35,7 +33,7 @@ class _FileLoader:
     def _date_from_filename(cls, filename):
         # 2016-02-15--05.00.HYD24BBpk
         name = osp.basename(filename)
-        dts, _ = name.rsplit('.', 1)
+        dts, _ = name.rsplit(".", 1)
         time_stamp = datetime.strptime(dts, cls.time_code)
         return time_stamp
 
@@ -44,7 +42,7 @@ class _FileLoader:
 
 
 class _FileMp3Loader(_FileLoader):
-    extension = 'mp3'
+    extension = "mp3"
 
     @classmethod
     def _data_from_file(cls, filename):
@@ -59,29 +57,32 @@ class _FileMp3Loader(_FileLoader):
 
 
 class _FileACOLoader(_FileLoader):
-    extension = 'HYD24BBpk'
+    extension = "HYD24BBpk"
     header_dtype = np.dtype(
-        [('Record', '<u4'),
-         ('Decimation', '<u1'),
-         ('StartofFile', '<u1'),
-         ('Sync1', '<u1'),
-         ('Sync2', '<u1'),
-         ('Statusbyte1', '<u1'),
-         ('Statusbyte2', '<u1'),
-         ('pad1', '<u1'),
-         ('LeftRightFlag', '<u1'),
-         ('tSec', '<u4'),
-         ('tuSec', '<u4'),
-         ('timecount', '<u4'),
-         ('Year', '<i2'),
-         ('yDay', '<i2'),
-         ('Hour', '<u1'),
-         ('Min', '<u1'),
-         ('Sec', '<u1'),
-         ('Allignment', '<u1'),
-         ('sSec', '<i2'),
-         ('dynrange', '<u1'),
-         ('bits', '<u1')])
+        [
+            ("Record", "<u4"),
+            ("Decimation", "<u1"),
+            ("StartofFile", "<u1"),
+            ("Sync1", "<u1"),
+            ("Sync2", "<u1"),
+            ("Statusbyte1", "<u1"),
+            ("Statusbyte2", "<u1"),
+            ("pad1", "<u1"),
+            ("LeftRightFlag", "<u1"),
+            ("tSec", "<u4"),
+            ("tuSec", "<u4"),
+            ("timecount", "<u4"),
+            ("Year", "<i2"),
+            ("yDay", "<i2"),
+            ("Hour", "<u1"),
+            ("Min", "<u1"),
+            ("Sec", "<u1"),
+            ("Allignment", "<u1"),
+            ("sSec", "<i2"),
+            ("dynrange", "<u1"),
+            ("bits", "<u1"),
+        ]
+    )
 
     @classmethod
     def _ACO_to_int(cls, databytes: np.ndarray, nbits: int = 16) -> np.ndarray:
@@ -106,15 +107,15 @@ class _FileACOLoader(_FileLoader):
         pows = 2 ** np.arange(nbits, dtype=cls.resolution)
         num = (bits * pows).sum(axis=1).astype(cls.resolution)
         # Handle twos-complement negative integers:
-        neg = num >= 2**(nbits-1)
+        neg = num >= 2 ** (nbits - 1)
         num[neg] -= 2**nbits
         return num
 
     @classmethod
     def _frames_per_second(cls, path):
         name = osp.basename(path)
-        _, encs = name.rsplit('.', 1)
-        fs = int(re.findall('\d+', encs).pop()) * 1000
+        _, encs = name.rsplit(".", 1)
+        fs = int(re.findall(r"\d+", encs).pop()) * 1000
         return fs
 
     @classmethod
@@ -127,16 +128,16 @@ class _FileACOLoader(_FileLoader):
     def _data_from_file(cls, filename):
         headerlist = []
         datalist = []
-        with open(filename, 'rb') as fid:
+        with open(filename, "rb") as fid:
             fid.seek(0, 2)
             eof = fid.tell()
             fid.seek(0, 0)
             while fid.tell() < eof:
                 header = np.fromfile(fid, count=1, dtype=cls.header_dtype)[0]
                 headerlist.append(header)
-                nbits = int(header['bits'])
-                count = (4096//8) * nbits
-                databytes = np.fromfile(fid, count=count, dtype='<u1')
+                nbits = int(header["bits"])
+                count = (4096 // 8) * nbits
+                databytes = np.fromfile(fid, count=count, dtype="<u1")
                 data = cls._ACO_to_int(databytes, nbits)
                 datalist.append(data)
 
@@ -161,13 +162,16 @@ class _DatetimeLoader:
     @classmethod
     def _filename_from_date(cls, index_datetime):
         dts = datetime.strftime(index_datetime, cls.time_code)
-        return '.'.join([dts, cls.extension])
+        return ".".join([dts, cls.extension])
 
     @classmethod
     def _path_from_date(cls, index_datetime, normdir):
         info = [index_datetime.year, index_datetime.month, index_datetime.day]
-        dirname = osp.join(*map(lambda i: str(i).zfill(2), info)) \
-            if normdir is None else normdir
+        dirname = (
+            osp.join(*map(lambda i: str(i).zfill(2), info))
+            if normdir is None
+            else normdir
+        )
         basename = cls._filename_from_date(index_datetime)
         return osp.join(dirname, basename)
 
@@ -177,21 +181,14 @@ class _DatetimeLoader:
         return cls._path_from_date(floor_datetime, normdir=normdir)
 
     @classmethod
-    def _load_full_ACO_from_base_datetime(
-        cls,
-        basedir, floor_datetime, normdir=None
-    ):
+    def _load_full_ACO_from_base_datetime(cls, basedir, floor_datetime, normdir=None):
         aco = cls.load_ACO_from_file(
             basedir, cls._path_from_date(floor_datetime, normdir)
         )
         return aco
 
     @classmethod
-    def load_span_ACO_from_datetime(
-        cls,
-        basedir, index_datetime,
-        duration
-    ):
+    def load_span_ACO_from_datetime(cls, basedir, index_datetime, duration):
         result = []
         floor_datetime = cls.__floor_dt(index_datetime)
         start = index_datetime - floor_datetime
@@ -199,14 +196,10 @@ class _DatetimeLoader:
         local_end = end
         while local_end.total_seconds() > 0:
             try:
-                _ = cls._load_full_ACO_from_base_datetime(
-                    basedir,
-                    floor_datetime
-                )
+                _ = cls._load_full_ACO_from_base_datetime(basedir, floor_datetime)
             except FileNotFoundError:
                 warnings.warn(
-                    'index-range not continuous in local storage',
-                    UserWarning
+                    "index-range not continuous in local storage", UserWarning
                 )
                 break
             floor_datetime = cls.__floor_dt(
@@ -216,7 +209,9 @@ class _DatetimeLoader:
             result.append(_)
 
         if not result:
-            raise FileNotFoundError(cls._path_from_date(floor_datetime, None), "Check Your Basedir")
+            raise FileNotFoundError(
+                cls._path_from_date(floor_datetime, None), "Check Your Basedir"
+            )
 
         aco = reduce(ACO.__matmul__, result).squash_nan()
         return aco[start:end]
@@ -257,7 +252,8 @@ class ACOLoader(Loader):
 
     def _date_loader(self, target, duration):
         return _DatetimeACOLoader.load_span_ACO_from_datetime(
-            self.basedir, target, duration)
+            self.basedir, target, duration
+        )
 
 
 class Mp3Loader(Loader):
@@ -266,7 +262,8 @@ class Mp3Loader(Loader):
 
     def _date_loader(self, target, duration):
         return _DatetimeMp3Loader.load_span_ACO_from_datetime(
-            self.basedir, target, duration)
+            self.basedir, target, duration
+        )
 
 
 class ACOio:
@@ -284,12 +281,7 @@ class ACO(Sound):
         self.raw = raw
 
     def copy(self):
-        return ACO(
-            self.start_datetime,
-            self._fs,
-            self._data.copy(),
-            self.raw
-        )
+        return ACO(self.start_datetime, self._fs, self._data.copy(), self.raw)
 
     @property
     def end_datetime(self):
@@ -302,17 +294,17 @@ class ACO(Sound):
         return self.duration_to_index(d - self.start_datetime)
 
     def __oolb(self, slice_):
-        return (slice_.start < timedelta(0))
+        return slice_.start < timedelta(0)
 
     def __ooub(self, slice_):
-        return (self.date_offset(slice_.stop) > self.end_datetime)
+        return self.date_offset(slice_.stop) > self.end_datetime
 
     def _oob(self, slice_):
         return self.__oolb(slice_) or self.__oolb(slice_)
 
     @classmethod
     def _reversed_indexing(cls, slice_):
-        return (slice_.stop < slice_.start)
+        return slice_.stop < slice_.start
 
     def __getitem__(self, slice_):
         idx = timedelta(seconds=0) if slice_.start is None else slice_.start
@@ -323,13 +315,11 @@ class ACO(Sound):
             raise "Does not support reverse indexing"
 
         if self._oob(slice_):
-            warnings.warn(f'Slice Out of Bounds', UserWarning)
+            warnings.warn("Slice Out of Bounds", UserWarning)
 
         result = self.copy()
         start = slice_.start
-        timestamp = self.start_datetime + (
-            timedelta(0) if start is None else start
-        )
+        timestamp = self.start_datetime + (timedelta(0) if start is None else start)
 
         idx, jdx = self._getitem__indicies(slice_)
         data = self._data[idx:jdx]
@@ -344,27 +334,25 @@ class ACO(Sound):
         :param other: next track
         :return: joined tracks that compensate for time differences
         """
-        assert(self.raw)
-        assert(other.raw)
+        assert self.raw
+        assert other.raw
 
         A, B = self.copy(), other.copy()
 
         ordered = (A, B)  # wlg
         if self._fs != other._fs:
-            ordered = sorted((self, other), key=attrgetter('_fs'))
+            ordered = sorted((self, other), key=attrgetter("_fs"))
             ordered[-1] = ordered[-1].resample_fs(ordered[0]._fs)
 
-        ordered = sorted(ordered, key=attrgetter('start_datetime'))
+        ordered = sorted(ordered, key=attrgetter("start_datetime"))
         duration = ordered[-1].end_datetime - ordered[0].start_datetime
 
-        space = max(
-            ordered[0].duration_to_index(duration),
-            len(A._data), len(B._data))
+        space = max(ordered[0].duration_to_index(duration), len(A._data), len(B._data))
 
         data = np.full(space, np.NAN)
 
         idx = ~np.isnan(ordered[0]._data)
-        data[:len(ordered[0]._data)][idx] = ordered[0]._data[idx]
+        data[: len(ordered[0]._data)][idx] = ordered[0]._data[idx]
 
         duration = ordered[-1].start_datetime - ordered[0].start_datetime
         start = ordered[0].duration_to_index(duration)
@@ -375,25 +363,23 @@ class ACO(Sound):
         # overlap_count = np.sum(~np.isnan(data[start:][idx]))
 
         if collision_count != 0:
-            warnings.warn(f'Collisions with [{collision_count}] samples (negative is underlap)', UserWarning)
+            warnings.warn(
+                f"Collisions with [{collision_count}] samples (negative is underlap)",
+                UserWarning,
+            )
 
         # dst = data[start:][idx]
-        src = ordered[-1]._data[idx]
+        # src = ordered[-1]._data[idx]
 
         assert abs(collision_count) <= ACCEPTIBLE_DROP
 
         result = self.__class__(
-            ordered[0].start_datetime,
-            ordered[0]._fs,
-            data,
-            ordered[0].raw
+            ordered[0].start_datetime, ordered[0]._fs, data, ordered[0].raw
         )
         return result
 
 
-if __name__ == '__main__':
-    loader = ACOio('./dst/', Mp3Loader)
-    target = datetime(
-        day=1, month=2, year=2016
-    )
+if __name__ == "__main__":
+    loader = ACOio("./dst/", Mp3Loader)
+    target = datetime(day=1, month=2, year=2016)
     aco = loader.load(target)

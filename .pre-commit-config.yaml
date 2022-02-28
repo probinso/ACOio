@@ -28,9 +28,8 @@ repos:
       - id: isort
         args: ["--profile", "black"]
         types: [file,python]
-#  - repo: https://gitlab.com/devopshq/gitlab-ci-linter
-#    rev: v1.0.3
-#    hooks:
-#      - id: gitlab-ci-linter
-#        args:
-#          - --filename=.ci/gitlab-ci.yml
+  # - repo: https://github.com/tox-dev/tox-ini-fmt
+  #   rev: 0.3.0
+  #   hooks:
+  #     - id: tox-ini-fmt
+  #       args: ["-p", "fix_lint,type"]

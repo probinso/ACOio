@@ -1,5 +1,5 @@
 scipy~=1.7.0
-numpy~=1.21.0
+numpy~=1.22.0
 pydub~=0.25.1
 memoized-property~=1.0.3
 jupyter~=1.0.0
