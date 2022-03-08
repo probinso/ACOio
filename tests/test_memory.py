@@ -1,11 +1,17 @@
 
-from acoio.aco import ACOio, ACOLoader, datetime, timedelta
+import pytest
+from datetime import datetime, timedelta
+from acoio.aco import ACOio, ACOLoader
+from pathlib import Path
+
+resources = Path("__file__").absolute().parent
 
 
+@pytest.mark.commit
 def mem_check():
-    loader = ACOio("/home/probinso/DATA/Whales", ACOLoader)
+    loader = ACOio(resources, ACOLoader)
     # select a date
-    target = datetime(day=1, month=1, year=2013)
+    target = datetime(day=26, month=12, year=2012)
 
     # if needed, select a duration (defaults to 5 minutes)
     dur = timedelta(seconds=20)
